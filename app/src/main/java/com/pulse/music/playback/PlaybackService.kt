@@ -64,13 +64,18 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
+    /**
+     * Swiping the app away from recents (or "close all") closes it: playback stops and
+     * the notification goes away. stop() keeps the queue and position, so reopening
+     * the app picks up where it left off.
+     */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val player = session?.player
-        if (player == null || !player.playWhenReady || player.mediaItemCount == 0 ||
-            player.playbackState == Player.STATE_ENDED
-        ) {
-            stopSelf()
+        applicationContext.container.player.persist()
+        session?.player?.run {
+            pause()
+            stop()
         }
+        stopSelf()
     }
 
     override fun onDestroy() {
