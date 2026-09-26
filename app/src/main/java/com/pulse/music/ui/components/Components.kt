@@ -60,6 +60,12 @@ import com.pulse.music.util.formatDuration
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+/** Theme-aware background for artwork and icon tiles. */
+@Composable
+@ReadOnlyComposable
+private fun placeholderBrush(): Brush =
+    Brush.linearGradient(listOf(PulseColors.SurfaceHighest, PulseColors.Surface))
+
 /** Album art with a quiet placeholder. The note icon shows through when a file has no art. */
 @Composable
 fun Artwork(
@@ -69,8 +75,7 @@ fun Artwork(
     iconSize: Dp = 22.dp,
 ) {
     val context = LocalContext.current
-    val placeholder = Brush.linearGradient(listOf(PulseColors.SurfaceHighest, PulseColors.Surface))
-    Box(modifier.clip(shape).background(placeholder), contentAlignment = Alignment.Center) {
+    Box(modifier.clip(shape).background(placeholderBrush()), contentAlignment = Alignment.Center) {
         Icon(
             Icons.Rounded.MusicNote,
             contentDescription = null,
@@ -95,7 +100,7 @@ fun IconTile(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
     iconSize: Dp = 24.dp,
-    brush: Brush = PlaceholderBrush,
+    brush: Brush = placeholderBrush(),
     tint: Color = MaterialTheme.colorScheme.primary,
 ) {
     Box(modifier.clip(shape).background(brush), contentAlignment = Alignment.Center) {
