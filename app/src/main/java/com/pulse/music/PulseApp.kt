@@ -26,7 +26,7 @@ class AppContainer(app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val prefs = AppPrefs(app)
     val database = AppDatabase.create(app)
-    val repository = MusicRepository(app, scope)
+    val repository = MusicRepository(app, scope, prefs)
     val equalizer = EqualizerManager(prefs)
     val player = PlayerController(app, scope, repository, prefs)
 }

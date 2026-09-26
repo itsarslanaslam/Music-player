@@ -60,8 +60,6 @@ import com.pulse.music.util.formatDuration
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private val PlaceholderBrush = Brush.linearGradient(listOf(PulseColors.SurfaceHighest, PulseColors.Surface))
-
 /** Album art with a quiet placeholder. The note icon shows through when a file has no art. */
 @Composable
 fun Artwork(
@@ -71,7 +69,8 @@ fun Artwork(
     iconSize: Dp = 22.dp,
 ) {
     val context = LocalContext.current
-    Box(modifier.clip(shape).background(PlaceholderBrush), contentAlignment = Alignment.Center) {
+    val placeholder = Brush.linearGradient(listOf(PulseColors.SurfaceHighest, PulseColors.Surface))
+    Box(modifier.clip(shape).background(placeholder), contentAlignment = Alignment.Center) {
         Icon(
             Icons.Rounded.MusicNote,
             contentDescription = null,
@@ -451,6 +450,7 @@ fun BoxScope.FastScroller(state: LazyListState, itemCount: Int) {
         label = "fastScroller",
     )
     val accent = MaterialTheme.colorScheme.primary
+    val line = PulseColors.Line
     val bottom = LocalBottomPadding.current
     val touchable = alpha > 0.05f
 
@@ -484,7 +484,7 @@ fun BoxScope.FastScroller(state: LazyListState, itemCount: Int) {
         val thumb = 48.dp.toPx()
         val x = size.width - w
         drawRoundRect(
-            color = PulseColors.Line.copy(alpha = 0.7f * alpha),
+            color = line.copy(alpha = 0.7f * alpha),
             topLeft = Offset(x, 0f),
             size = Size(w, size.height),
             cornerRadius = CornerRadius(w / 2),

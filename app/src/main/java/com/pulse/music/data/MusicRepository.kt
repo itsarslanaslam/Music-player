@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -23,6 +25,7 @@ import kotlinx.coroutines.withContext
 class MusicRepository(
     private val context: Context,
     private val scope: CoroutineScope,
+    private val prefs: AppPrefs,
 ) {
     private val _library = MutableStateFlow(Library())
     val library: StateFlow<Library> = _library.asStateFlow()
@@ -32,6 +35,29 @@ class MusicRepository(
 
     private var started = false
     private var scanJob: Job? = null
+
+    // Serializes publishing so a rebuild after hiding a song can't be overwritten by an older result.
+    private val publishLock = Mutex()
+    private var lastScan: List<Song> = emptyList()
+
+    fun hideSong(id: Long) {
+        prefs.hideSong(id)
+        republish()
+    }
+
+    fun restoreHiddenSongs() {
+        prefs.clearHiddenSongs()
+        republish()
+    }
+
+    private fun republish() {
+        scope.launch { publishLock.withLock { publish(lastScan) } }
+    }
+
+    private suspend fun publish(raw: List<Song>) {
+        val hidden = prefs.hiddenSongIds.value
+        _library.value = withContext(Dispatchers.Default) { buildLibrary(raw.filter { it.id !in hidden }) }
+    }
 
     fun start() {
         if (started) return
@@ -54,7 +80,11 @@ class MusicRepository(
             if (debounceMs > 0) delay(debounceMs)
             _scanning.value = true
             try {
-                _library.value = withContext(Dispatchers.IO) { buildLibrary(querySongs()) }
+                val raw = withContext(Dispatchers.IO) { querySongs() }
+                publishLock.withLock {
+                    lastScan = raw
+                    publish(raw)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -19,7 +19,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -37,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
@@ -115,7 +113,7 @@ fun SeekBar(
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val track = Color.White.copy(alpha = 0.16f)
+    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)
     var active by remember { mutableStateOf(false) }
     val thumbRadius by animateDpAsState(if (active) 9.dp else 6.dp, label = "thumb")
     val trackHeight by animateDpAsState(if (active) 6.dp else 4.dp, label = "track")
@@ -165,12 +163,13 @@ fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit, size: Dp, modifier:
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(stiffness = Spring.StiffnessMedium), label = "press")
     val accent = MaterialTheme.colorScheme.primary
     val onAccent = MaterialTheme.colorScheme.onPrimary
+    val shape = RoundedCornerShape(30)
     Box(
         modifier
             .size(size)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .shadow(20.dp, CircleShape, ambientColor = accent, spotColor = accent)
-            .clip(CircleShape)
+            .shadow(20.dp, shape, ambientColor = accent, spotColor = accent)
+            .clip(shape)
             .background(accent)
             .clickable(interactionSource = interaction, indication = ripple(color = onAccent), onClick = onClick),
         contentAlignment = Alignment.Center,

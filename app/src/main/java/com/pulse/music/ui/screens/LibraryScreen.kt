@@ -1,5 +1,6 @@
 package com.pulse.music.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.BrightnessMedium
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Folder
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Tune
@@ -30,11 +33,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pulse.music.data.SongSort
+import com.pulse.music.data.ThemeMode
 import com.pulse.music.ui.LocalActions
 import com.pulse.music.ui.LocalBottomPadding
 import com.pulse.music.ui.MusicViewModel
@@ -53,12 +58,41 @@ import kotlinx.coroutines.launch
 private val Tabs = listOf("Songs", "Albums", "Artists", "Playlists", "Folders")
 
 @Composable
+private fun ThemeDialog(current: ThemeMode, onSelect: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PulseColors.SurfaceHigh,
+        title = { Text("Theme") },
+        text = {
+            Column {
+                ThemeMode.entries.forEach { mode ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSelect(mode) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = mode == current, onClick = { onSelect(mode) })
+                        Text(mode.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
+@Composable
 fun LibraryScreen(vm: MusicViewModel) {
     val pager = rememberPagerState(pageCount = { Tabs.size })
     val scope = rememberCoroutineScope()
     val scanning by vm.scanning.collectAsStateWithLifecycle()
     val actions = LocalActions.current
     var menuOpen by remember { mutableStateOf(false) }
+    var themeDialogOpen by remember { mutableStateOf(false) }
+    val hiddenCount = vm.hiddenSongIds.collectAsStateWithLifecycle().value.size
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(
@@ -91,8 +125,29 @@ fun LibraryScreen(vm: MusicViewModel) {
                         leadingIcon = { Icon(Icons.Rounded.Bedtime, null) },
                         onClick = { menuOpen = false; actions.openSleepTimer() },
                     )
+                    DropdownMenuItem(
+                        text = { Text("Theme") },
+                        leadingIcon = { Icon(Icons.Rounded.BrightnessMedium, null) },
+                        onClick = { menuOpen = false; themeDialogOpen = true },
+                    )
+                    if (hiddenCount > 0) {
+                        DropdownMenuItem(
+                            text = { Text("Restore removed songs ($hiddenCount)") },
+                            leadingIcon = { Icon(Icons.Rounded.Restore, null) },
+                            onClick = { menuOpen = false; vm.restoreRemovedSongs() },
+                        )
+                    }
                 }
             }
+        }
+
+        if (themeDialogOpen) {
+            val current by vm.themeMode.collectAsStateWithLifecycle()
+            ThemeDialog(
+                current = current,
+                onSelect = { vm.setThemeMode(it); themeDialogOpen = false },
+                onDismiss = { themeDialogOpen = false },
+            )
         }
 
         ScrollableTabRow(

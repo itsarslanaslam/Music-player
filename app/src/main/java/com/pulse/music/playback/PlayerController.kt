@@ -252,6 +252,15 @@ class PlayerController(
         }
     }
 
+    fun removeSongFromQueue(songId: Long) {
+        val c = controller ?: return
+        val id = songId.toString()
+        for (i in c.mediaItemCount - 1 downTo 0) {
+            if (c.getMediaItemAt(i).mediaId == id) c.removeMediaItem(i)
+        }
+        originalOrder = originalOrder?.filterNot { it.mediaId == id }
+    }
+
     fun moveInQueue(from: Int, to: Int) {
         val c = controller ?: return
         if (from == to || from !in 0 until c.mediaItemCount || to !in 0 until c.mediaItemCount) return

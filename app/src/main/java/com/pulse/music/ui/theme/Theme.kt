@@ -9,14 +9,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,14 +35,47 @@ import coil.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@Immutable
+data class PulsePalette(
+    val background: Color,
+    val surface: Color,
+    val surfaceHigh: Color,
+    val surfaceHighest: Color,
+    val onSurface: Color,
+    val muted: Color,
+    val line: Color,
+)
+
+private val DarkPalette = PulsePalette(
+    background = Color(0xFF0D0F14),
+    surface = Color(0xFF151821),
+    surfaceHigh = Color(0xFF1D212C),
+    surfaceHighest = Color(0xFF272B37),
+    onSurface = Color(0xFFF1F2F6),
+    muted = Color(0xFF8B90A0),
+    line = Color(0xFF2A2E3A),
+)
+
+private val LightPalette = PulsePalette(
+    background = Color(0xFFF6F7FB),
+    surface = Color(0xFFFFFFFF),
+    surfaceHigh = Color(0xFFECEEF4),
+    surfaceHighest = Color(0xFFE0E3EC),
+    onSurface = Color(0xFF14161C),
+    muted = Color(0xFF666B7A),
+    line = Color(0xFFDCDFE7),
+)
+
+private val LocalPulsePalette = staticCompositionLocalOf { DarkPalette }
+
 object PulseColors {
-    val Background = Color(0xFF0D0F14)
-    val Surface = Color(0xFF151821)
-    val SurfaceHigh = Color(0xFF1D212C)
-    val SurfaceHighest = Color(0xFF272B37)
-    val OnSurface = Color(0xFFF1F2F6)
-    val Muted = Color(0xFF8B90A0)
-    val Line = Color(0xFF2A2E3A)
+    val Background: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.background
+    val Surface: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.surface
+    val SurfaceHigh: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.surfaceHigh
+    val SurfaceHighest: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.surfaceHighest
+    val OnSurface: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.onSurface
+    val Muted: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.muted
+    val Line: Color @Composable @ReadOnlyComposable get() = LocalPulsePalette.current.line
     val DefaultAccent = Color(0xFF8B7CFF)
 }
 
@@ -58,42 +97,55 @@ val PulseTypography = Typography(
 )
 
 @Composable
-fun PulseTheme(accent: Color, content: @Composable () -> Unit) {
-    val onAccent = if (accent.luminance() > 0.4f) PulseColors.Background else Color.White
-    val tint = accent.copy(alpha = 0.18f).compositeOver(PulseColors.Surface)
-    val scheme = darkColorScheme(
-        primary = accent,
+fun PulseTheme(accent: Color, dark: Boolean, content: @Composable () -> Unit) {
+    val p = if (dark) DarkPalette else LightPalette
+    val primary = remember(accent, dark) { if (dark) accent else tuneForLightUi(accent) }
+    val onAccent = if (primary.luminance() > 0.4f) DarkPalette.background else Color.White
+    val tint = primary.copy(alpha = if (dark) 0.18f else 0.14f).compositeOver(p.surface)
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val scheme = base.copy(
+        primary = primary,
         onPrimary = onAccent,
         primaryContainer = tint,
-        onPrimaryContainer = PulseColors.OnSurface,
-        secondary = accent,
+        onPrimaryContainer = p.onSurface,
+        secondary = primary,
         onSecondary = onAccent,
         secondaryContainer = tint,
-        onSecondaryContainer = PulseColors.OnSurface,
-        background = PulseColors.Background,
-        onBackground = PulseColors.OnSurface,
-        surface = PulseColors.Background,
-        onSurface = PulseColors.OnSurface,
-        surfaceVariant = PulseColors.SurfaceHigh,
-        onSurfaceVariant = PulseColors.Muted,
-        surfaceContainerLowest = PulseColors.Background,
-        surfaceContainerLow = PulseColors.Surface,
-        surfaceContainer = PulseColors.Surface,
-        surfaceContainerHigh = PulseColors.SurfaceHigh,
-        surfaceContainerHighest = PulseColors.SurfaceHighest,
-        outline = PulseColors.Line,
-        outlineVariant = PulseColors.Line,
+        onSecondaryContainer = p.onSurface,
+        background = p.background,
+        onBackground = p.onSurface,
+        surface = p.background,
+        onSurface = p.onSurface,
+        surfaceVariant = p.surfaceHigh,
+        onSurfaceVariant = p.muted,
+        surfaceContainerLowest = p.background,
+        surfaceContainerLow = p.surface,
+        surfaceContainer = p.surface,
+        surfaceContainerHigh = p.surfaceHigh,
+        surfaceContainerHighest = p.surfaceHighest,
+        outline = p.line,
+        outlineVariant = p.line,
     )
-    MaterialTheme(
-        colorScheme = scheme,
-        typography = PulseTypography,
-        shapes = Shapes(
-            small = RoundedCornerShape(10.dp),
-            medium = RoundedCornerShape(16.dp),
-            large = RoundedCornerShape(24.dp),
-        ),
-        content = content,
-    )
+    CompositionLocalProvider(LocalPulsePalette provides p) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = PulseTypography,
+            shapes = Shapes(
+                small = RoundedCornerShape(10.dp),
+                medium = RoundedCornerShape(16.dp),
+                large = RoundedCornerShape(24.dp),
+            ),
+            content = content,
+        )
+    }
+}
+
+/** Same hue, but dark enough to read on a near-white background. */
+private fun tuneForLightUi(color: Color): Color {
+    val hsl = FloatArray(3)
+    ColorUtils.colorToHSL(color.toArgb(), hsl)
+    hsl[2] = hsl[2].coerceIn(0.34f, 0.46f)
+    return Color(ColorUtils.HSLToColor(hsl))
 }
 
 private val accentCache = LruCache<Uri, Int>(128)

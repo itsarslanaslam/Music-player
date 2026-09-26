@@ -14,6 +14,7 @@ import com.pulse.music.data.QueueItem
 import com.pulse.music.data.SearchResults
 import com.pulse.music.data.Song
 import com.pulse.music.data.SongSort
+import com.pulse.music.data.ThemeMode
 import com.pulse.music.playback.EqState
 import com.pulse.music.playback.PlayerState
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     val playerState: StateFlow<PlayerState> = player.state
     val eqState: StateFlow<EqState> = equalizer.state
     val songSort: StateFlow<SongSort> = prefs.songSort
+    val themeMode: StateFlow<ThemeMode> = prefs.themeMode
+    val hiddenSongIds: StateFlow<Set<Long>> = prefs.hiddenSongIds
 
     val sortedSongs: StateFlow<List<Song>> = combine(library, songSort) { lib, sort ->
         if (sort == SongSort.TITLE) lib.songs else lib.songs.sortedWith(sort.comparator)
@@ -61,8 +64,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         entries.mapNotNull { e -> e.mediaId.toLongOrNull()?.let { lib.songsById[it] }?.let { QueueItem(e.index, it) } }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val playlists: StateFlow<List<PlaylistSummary>> =
-        dao.observePlaylists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    // Counts and covers only consider songs still in the library (not removed, not deleted from the device).
+    val playlists: StateFlow<List<PlaylistSummary>> = combine(
+        dao.observePlaylists(),
+        dao.observeAllPlaylistSongs(),
+        library,
+    ) { summaries, refs, lib ->
+        if (!lib.loaded) return@combine summaries
+        val present = refs.filter { it.songId in lib.songsById }.groupBy { it.playlistId }
+        summaries.map { p ->
+            val songs = present[p.id].orEmpty()
+            p.copy(songCount = songs.size, firstSongId = songs.firstOrNull()?.songId)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val favoriteIds: StateFlow<Set<Long>> =
         dao.observeFavoriteIds().map { it.toSet() }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -88,6 +102,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun onPermissionGranted() = repository.start()
     fun rescan() = repository.rescan()
     fun setSongSort(sort: SongSort) = prefs.setSongSort(sort)
+    fun setThemeMode(mode: ThemeMode) = prefs.setThemeMode(mode)
+
+    fun removeFromLibrary(song: Song) {
+        player.removeSongFromQueue(song.id)
+        repository.hideSong(song.id)
+        toast("Removed from library")
+    }
+
+    fun restoreRemovedSongs() {
+        val count = hiddenSongIds.value.size
+        repository.restoreHiddenSongs()
+        toast(if (count == 1) "Restored 1 song" else "Restored $count songs")
+    }
     fun setQuery(q: String) { _query.value = q }
 
     // Playback

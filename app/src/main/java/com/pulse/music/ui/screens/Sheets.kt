@@ -12,11 +12,10 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +35,8 @@ import com.pulse.music.ui.MusicViewModel
 import com.pulse.music.ui.Routes
 import com.pulse.music.ui.components.Artwork
 import com.pulse.music.ui.components.IconTile
+import com.pulse.music.ui.components.ShipWheelFilled
+import com.pulse.music.ui.components.ShipWheelOutline
 import com.pulse.music.ui.theme.PulseColors
 import com.pulse.music.util.formatDuration
 import com.pulse.music.util.songsLabel
@@ -89,7 +90,7 @@ fun SongOptionsSheet(
         SheetOption(Icons.AutoMirrored.Rounded.QueueMusic, "Add to queue") { vm.addToQueue(listOf(song)); close() }
         SheetOption(Icons.AutoMirrored.Rounded.PlaylistAdd, "Add to playlist") { close { onAddToPlaylist(song) } }
         SheetOption(
-            if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            if (liked) ShipWheelFilled else ShipWheelOutline,
             if (liked) "Remove from Liked songs" else "Add to Liked songs",
             tint = if (liked) MaterialTheme.colorScheme.primary else PulseColors.OnSurface,
         ) { vm.toggleFavorite(song.id); close() }
@@ -108,6 +109,10 @@ fun SongOptionsSheet(
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             close { context.startActivity(Intent.createChooser(send, "Share ${song.title}")) }
+        }
+        SheetOption(Icons.Rounded.VisibilityOff, "Remove from library") {
+            vm.removeFromLibrary(song)
+            close()
         }
         Spacer(Modifier.height(16.dp))
     }

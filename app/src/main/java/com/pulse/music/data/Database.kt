@@ -53,6 +53,11 @@ data class PlaylistSummary(
     val firstSongId: Long?,
 )
 
+data class PlaylistSongRef(
+    val playlistId: Long,
+    val songId: Long,
+)
+
 @Dao
 interface PlaylistDao {
     @Query(
@@ -70,6 +75,9 @@ interface PlaylistDao {
 
     @Query("SELECT songId FROM playlist_songs WHERE playlistId = :id ORDER BY position")
     fun observeSongIds(id: Long): Flow<List<Long>>
+
+    @Query("SELECT playlistId, songId FROM playlist_songs ORDER BY position")
+    fun observeAllPlaylistSongs(): Flow<List<PlaylistSongRef>>
 
     @Insert
     suspend fun insertPlaylist(playlist: PlaylistEntity): Long

@@ -4,6 +4,8 @@ import android.os.Build
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -21,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Repeat
@@ -59,6 +59,8 @@ import com.pulse.music.ui.Routes
 import com.pulse.music.ui.components.Artwork
 import com.pulse.music.ui.components.PlayPauseButton
 import com.pulse.music.ui.components.SeekBar
+import com.pulse.music.ui.components.ShipWheelFilled
+import com.pulse.music.ui.components.ShipWheelOutline
 import com.pulse.music.ui.components.SongRow
 import com.pulse.music.ui.components.rememberPlaybackPosition
 import com.pulse.music.ui.components.swipeToSkip
@@ -66,6 +68,7 @@ import com.pulse.music.ui.theme.PulseColors
 import com.pulse.music.util.formatDuration
 import com.pulse.music.util.songsLabel
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun NowPlayingScreen(vm: MusicViewModel, onCollapse: () -> Unit) {
@@ -272,19 +275,32 @@ fun NowPlayingScreen(vm: MusicViewModel, onCollapse: () -> Unit) {
 @Composable
 private fun FavoriteButton(liked: Boolean, tint: Color, onClick: () -> Unit) {
     val scale = remember { Animatable(1f) }
+    val rotation = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     IconButton(onClick = {
+        val liking = !liked
         onClick()
         scope.launch {
-            scale.animateTo(1.3f, tween(110))
-            scale.animateTo(1f, spring(dampingRatio = 0.4f))
+            if (liking) {
+                // Spokes repeat every 45°, so resting on a multiple of 45 looks identical to the start.
+                val rest = (rotation.value / 45f).roundToInt() * 45f + 360f
+                rotation.animateTo(rest + 50f, tween(650, easing = FastOutSlowInEasing))
+                rotation.animateTo(rest, spring(dampingRatio = 0.25f, stiffness = Spring.StiffnessLow))
+            } else {
+                scale.animateTo(0.8f, tween(90))
+                scale.animateTo(1f, spring(dampingRatio = 0.4f))
+            }
         }
     }) {
         Icon(
-            if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            if (liked) ShipWheelFilled else ShipWheelOutline,
             contentDescription = if (liked) "Remove from Liked songs" else "Add to Liked songs",
             tint = if (liked) tint else PulseColors.OnSurface,
-            modifier = Modifier.size(28.dp).graphicsLayer { scaleX = scale.value; scaleY = scale.value },
+            modifier = Modifier.size(28.dp).graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                rotationZ = rotation.value
+            },
         )
     }
 }

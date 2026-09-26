@@ -1,5 +1,5 @@
 <resources>
-    <color name="pulse_background">#0D0F14</color>
-    <color name="pulse_icon_bg">#0D0F14</color>
+    <color name="pulse_background">#F6F7FB</color>
+    <color name="pulse_icon_bg">#000000</color>
     <color name="pulse_accent">#8B7CFF</color>
 </resources>

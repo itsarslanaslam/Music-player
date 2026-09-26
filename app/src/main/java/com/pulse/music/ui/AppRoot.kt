@@ -1,6 +1,10 @@
 package com.pulse.music.ui
 
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -35,6 +39,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pulse.music.data.Song
+import com.pulse.music.data.ThemeMode
 import com.pulse.music.ui.components.MiniPlayer
 import com.pulse.music.ui.screens.AddToPlaylistDialog
 import com.pulse.music.ui.screens.AlbumScreen
@@ -58,7 +63,20 @@ fun AppRoot(vm: MusicViewModel = viewModel()) {
     val context = LocalContext.current
     val song by vm.currentSong.collectAsStateWithLifecycle()
     val accent by rememberArtworkAccent(song?.artUri)
+    val themeMode by vm.themeMode.collectAsStateWithLifecycle()
+    val dark = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     var granted by remember { mutableStateOf(hasAudioPermission(context)) }
+
+    DisposableEffect(dark) {
+        val transparent = android.graphics.Color.TRANSPARENT
+        val style = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent)
+        (context as? ComponentActivity)?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        onDispose {}
+    }
 
     // Catches the case where the user grants access from system settings and comes back.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -68,7 +86,7 @@ fun AppRoot(vm: MusicViewModel = viewModel()) {
         }
     }
 
-    PulseTheme(accent) {
+    PulseTheme(accent, dark) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (!granted) {
                 PermissionScreen(onGranted = {
